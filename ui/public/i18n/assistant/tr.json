@@ -118,9 +118,23 @@
       "replacesReminder": "Bu testin mevcut hatırlatmasının yerine geçer.",
       "dates": "{{start}} – {{end}}",
       "replacesProgram": "Şu anki aktif programının yerine geçer.",
-      "pages": "{{count}} çalışma sayfası",
       "markDone": "Yapıldı olarak işaretlenir.",
-      "markUndone": "Yapılmadı olarak işaretlenir."
+      "markUndone": "Yapılmadı olarak işaretlenir.",
+      "timeBased": "Süreli çalışma: {{duration}} dakika (çalışma-ara)",
+      "questionBased": "Soru takipli: her dersten günde {{count}} soru",
+      "subjectsPerDay": "Günde {{count}} ders",
+      "restDays": "Dinlenme: {{days}}",
+      "difficult": "Zorlandığın dersler: {{subjects}}",
+      "page": "{{title}}: {{start}} – {{end}}"
+    },
+    "day": {
+      "1": "Pazartesi",
+      "2": "Salı",
+      "3": "Çarşamba",
+      "4": "Perşembe",
+      "5": "Cuma",
+      "6": "Cumartesi",
+      "7": "Pazar"
     }
   },
   "errors": {

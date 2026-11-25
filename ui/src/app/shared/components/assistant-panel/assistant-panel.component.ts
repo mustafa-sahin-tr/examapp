@@ -90,6 +90,8 @@ const KNOWN_ACTIONS = new Set([
 interface ConfirmLine {
   key: string;
   params: Record<string, unknown>;
+  /** Dinlenme günleri (1 = Pazartesi … 7 = Pazar); şablon `confirm.day.N` ile adlandırır. */
+  days?: number[];
 }
 
 /** `<untrusted>…</untrusted>` işaretini kaldırır (Angular interpolation zaten kaçışlar). */
@@ -259,6 +261,10 @@ export class AssistantPanelComponent implements AfterViewInit {
     return START_ACTIONS.has(this.actionKey(card));
   }
 
+  dayNames(days: number[], t: (key: string) => string): string {
+    return days.map((d) => t('confirm.day.' + d)).join(', ');
+  }
+
   /** Issue #515: onay kartının ayrıntı satırları (adlar sunucuda `<untrusted>` ile işaretli; panelde düz metin). */
   confirmLines(card: AssistantCard): ConfirmLine[] {
     if (card.kind !== 'confirm' || !card.preview) return [];
@@ -275,12 +281,28 @@ export class AssistantPanelComponent implements AfterViewInit {
         lines.push({ key: 'confirm.line.reminder', params: { date: localDate(p['date']), time: p['time'], minutes: p['remindBeforeMinutes'] } });
         if (p['replacesReminder']) lines.push({ key: 'confirm.line.replacesReminder', params: {} });
         break;
-      case 'createStudyProgram':
+      case 'createStudyProgram': {
         lines.push({ key: 'confirm.line.dates', params: { start: localDate(p['startDate']), end: localDate(p['endDate']) } });
+        lines.push(
+          p['studyType'] === 'time'
+            ? { key: 'confirm.line.timeBased', params: { duration: p['studyDuration'] } }
+            : { key: 'confirm.line.questionBased', params: { count: p['questionsPerDay'] } }
+        );
+        lines.push({ key: 'confirm.line.subjectsPerDay', params: { count: p['subjectsPerDay'] } });
+        const rest = Array.isArray(p['restDays']) ? (p['restDays'] as unknown[]).filter((d): d is number => typeof d === 'number') : [];
+        if (rest.length) lines.push({ key: 'confirm.line.restDays', params: { days: rest.filter((d) => d >= 1 && d <= 7).join(',') }, days: rest.filter((d) => d >= 1 && d <= 7) });
+        const hard = Array.isArray(p['difficultSubjects']) ? (p['difficultSubjects'] as unknown[]).map(plainText).filter(Boolean) : [];
+        if (hard.length) lines.push({ key: 'confirm.line.difficult', params: { subjects: hard.join(', ') } });
         if (p['replacesActiveProgram']) lines.push({ key: 'confirm.line.replacesProgram', params: {} });
         break;
+      }
       case 'scheduleStudyPages':
-        lines.push({ key: 'confirm.line.pages', params: { count: Array.isArray(p['items']) ? p['items'].length : 0 } });
+        for (const item of Array.isArray(p['items']) ? (p['items'] as Record<string, unknown>[]) : []) {
+          lines.push({
+            key: 'confirm.line.page',
+            params: { title: plainText(item['title']) || '—', start: localDate(item['startDate']), end: localDate(item['endDate']) },
+          });
+        }
         break;
       case 'markStudyPageDone':
         lines.push({ key: p['done'] === false ? 'confirm.line.markUndone' : 'confirm.line.markDone', params: {} });

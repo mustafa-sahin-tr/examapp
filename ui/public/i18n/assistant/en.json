@@ -118,9 +118,23 @@
       "replacesReminder": "Replaces this test's current reminder.",
       "dates": "{{start}} – {{end}}",
       "replacesProgram": "Replaces your current active program.",
-      "pages": "{{count}} study pages",
       "markDone": "Marked as done.",
-      "markUndone": "Marked as not done."
+      "markUndone": "Marked as not done.",
+      "timeBased": "Timed study: {{duration}} minutes (work-break)",
+      "questionBased": "Question-based: {{count}} questions per subject a day",
+      "subjectsPerDay": "{{count}} subjects a day",
+      "restDays": "Rest: {{days}}",
+      "difficult": "Hard subjects: {{subjects}}",
+      "page": "{{title}}: {{start}} – {{end}}"
+    },
+    "day": {
+      "1": "Monday",
+      "2": "Tuesday",
+      "3": "Wednesday",
+      "4": "Thursday",
+      "5": "Friday",
+      "6": "Saturday",
+      "7": "Sunday"
     }
   },
   "errors": {

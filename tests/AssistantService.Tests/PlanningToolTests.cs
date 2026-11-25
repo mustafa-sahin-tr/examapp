@@ -47,10 +47,11 @@ public sealed class PlanningToolTests : IDisposable
         _h.Api.On("GET", "api/program/my-programs", new[] { new { id = 4, isActive = true } });
         _h.Api.On("POST", "api/program/create", new { id = 9, schedules = new[] { new { id = 1 }, new { id = 2 } } });
         var tool = (IAssistantWriteTool)Tool("create_study_program");
-        var args = Args(new { name = "Kis plani", studyType = "question", questionsPerDay = 12, subjectsPerDay = 2, restDays = new[] { 7 }, difficultSubjectIds = new[] { 3 } });
+        var args = Args(new { name = "Kis plani", studyType = "question", questionsPerDay = 12, subjectsPerDay = 2, restDays = new[] { 7 }, difficultSubjectIds = new[] { 3 }, startDate = "2026-11-23" });
 
-        (await tool.ExecuteAsync(Student(), Args(new { name = "x", studyType = "question", questionsPerDay = 10, subjectsPerDay = 2 }))).ErrorCode.ShouldBe("InvalidArguments");
-        (await tool.ExecuteAsync(Student(), Args(new { name = "x", studyType = "time", subjectsPerDay = 1, difficultSubjectIds = new[] { 99 } }))).ErrorCode.ShouldBe("InvalidArguments");
+        (await tool.ExecuteAsync(Student(), Args(new { name = "x", studyType = "question", questionsPerDay = 10, subjectsPerDay = 2, startDate = "2026-11-23" }))).ErrorCode.ShouldBe("InvalidArguments");
+        (await tool.ExecuteAsync(Student(), Args(new { name = "x", studyType = "question", questionsPerDay = 12, subjectsPerDay = 2 }))).ErrorCode.ShouldBe("InvalidArguments"); // startDate required
+        (await tool.ExecuteAsync(Student(), Args(new { name = "x", studyType = "time", subjectsPerDay = 1, difficultSubjectIds = new[] { 99 }, startDate = "2026-11-23" }))).ErrorCode.ShouldBe("InvalidArguments");
         var preview = await tool.ExecuteAsync(Student(), args);
         preview.Data!["startDate"]!.GetValue<string>().ShouldBe("2026-11-23");
         preview.Data!["endDate"]!.GetValue<string>().ShouldBe("2026-12-23");
@@ -75,12 +76,16 @@ public sealed class PlanningToolTests : IDisposable
     {
         _h.Api.On("GET", "api/program/4", new { id = 4, programName = "Yaz planı", studyItemSchedules = new[] { new { id = 70, studyItemTitle = "Özet", isCompleted = false } } });
         _h.Api.On("POST", "api/program/4/study-pages", new { id = 4 });
+        _h.Api.On("GET", "api/study-items/11", new { id = 11, title = "Kesir özeti" });
+        _h.Api.On("GET", "api/study-items/12", new { message = "out of plan" }, HttpStatusCode.Forbidden);
         _h.Api.On("PUT", "api/program/4/study-pages/70/complete", null, HttpStatusCode.NoContent);
         var schedule = (IAssistantWriteTool)Tool("schedule_study_pages");
         var args = Args(new { programId = 4, items = new[] { new { studyItemId = 11, startDate = "2026-11-24", endDate = "2026-11-25" } } });
 
         (await schedule.ExecuteAsync(Student(), Args(new { programId = 4, items = new[] { new { studyItemId = 11, startDate = "2026-11-22" } } }))).ErrorCode.ShouldBe("InvalidArguments");
-        (await schedule.ExecuteAsync(Student(), args)).Data!["items"]!.AsArray().Count.ShouldBe(1);
+        (await schedule.ExecuteAsync(Student(), Args(new { programId = 4, items = new[] { new { studyItemId = 12, startDate = "2026-11-24" } } }))).ErrorCode.ShouldBe("StudyPageNotAvailable");
+        var schedulePreview = await schedule.ExecuteAsync(Student(), args);
+        schedulePreview.Data!["items"]![0]!["title"]!.GetValue<string>().ShouldBe("<untrusted>Kesir özeti</untrusted>");
         await schedule.CommitAsync(Student(), args);
         _h.Api.Calls.Single(c => c.Method == "POST").Body
             .ShouldBe("""{"items":[{"studyItemId":11,"startDate":"2026-11-23T21:00:00Z","endDate":"2026-11-24T21:00:00Z"}]}""");
@@ -97,8 +102,9 @@ public sealed class PlanningToolTests : IDisposable
     {
         _h.Api.On("GET", "api/worksheet/list?pageNumber=1&pageSize=10&kind=0&search=kesir&statuses=-1",
             new { totalCount = 1, items = new[] { new { id = 301, name = "Kesirler", questionCount = 15, maxDurationSeconds = 1200, imageUrl = "x" } } });
-        _h.Api.On("GET", "api/worksheet/301", new { id = 301, name = "Kesirler", kind = 0, questionCount = 15, maxDurationSeconds = 1200 });
-        _h.Api.On("GET", "api/worksheet/302", new { id = 302, name = "Labirent", kind = 1 });
+        _h.Api.On("GET", "api/worksheet/list?id=301&pageNumber=1&pageSize=1", new { items = new[] { new { id = 301, name = "Kesirler", kind = 0, questionCount = 15, maxDurationSeconds = 1200 } } });
+        _h.Api.On("GET", "api/worksheet/list?id=302&pageNumber=1&pageSize=1", new { items = new[] { new { id = 302, name = "Labirent", kind = 1, questionCount = 0, maxDurationSeconds = 0 } } });
+        _h.Api.On("GET", "api/worksheet/list?id=303&pageNumber=1&pageSize=1", new { items = Array.Empty<object>() });
         _h.Api.On("POST", "api/worksheet/start-test/301", new { instanceId = 555 });
 
         var found = await Tool("search_worksheets").ExecuteAsync(Student(), Args(new { search = "kesir", status = "notStarted" }));
@@ -109,6 +115,7 @@ public sealed class PlanningToolTests : IDisposable
 
         var start = (IAssistantWriteTool)Tool("start_test");
         (await start.ExecuteAsync(Student(), Args(new { worksheetId = 302 }))).ErrorCode.ShouldBe("NotATest");
+        (await start.ExecuteAsync(Student(), Args(new { worksheetId = 303 }))).ErrorCode.ShouldBe("NotFound"); // not open to the student
         (await start.ExecuteAsync(Student(), Args(new { worksheetId = 301 }))).Data!["questionCount"]!.GetValue<int>().ShouldBe(15);
         _h.Api.Calls.ShouldAllBe(c => c.Method == "GET");
         var commit = await start.CommitAsync(Student(), Args(new { worksheetId = 301 }));

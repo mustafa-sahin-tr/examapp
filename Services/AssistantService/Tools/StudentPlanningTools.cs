@@ -115,12 +115,12 @@ public sealed class CreateStudyProgramTool(DownstreamClient api, TimeProvider cl
         ("subjectsPerDay", IntProp("Different subjects per day.", 1, 3), true),
         ("restDays", IntArrayProp("Days without study, 1=Monday … 7=Sunday.", 6), false),
         ("difficultSubjectIds", IntArrayProp("Subjects the student finds hard (ids from the preview's subjects).", 10), false),
-        ("startDate", LocalTime.DateProp("First day; default today."), false),
+        ("startDate", LocalTime.DateProp("First day (today's date for 'from today')."), true),
         ("endDate", LocalTime.DateProp("Last day; default 30 days after the start."), false));
 
     public async Task<ToolResult> ExecuteAsync(ToolContext context, JsonElement args)
     {
-        var (request, error) = Build(args);
+        var (request, error) = Build(args, commit: false);
         if (error is not null)
             return error;
         var subjects = await api.GetAsync(context, "api/program/subjects");
@@ -137,7 +137,7 @@ public sealed class CreateStudyProgramTool(DownstreamClient api, TimeProvider cl
         return ToolResult.Success(new JsonObject
         {
             ["action"] = "createStudyProgram",
-            ["name"] = request.Name,
+            ["name"] = Untrusted(request.Name),
             ["studyType"] = request.StudyType,
             ["studyDuration"] = request.StudyDuration,
             ["questionsPerDay"] = request.QuestionsPerDay,
@@ -153,7 +153,7 @@ public sealed class CreateStudyProgramTool(DownstreamClient api, TimeProvider cl
 
     public async Task<ToolResult> CommitAsync(ToolContext context, JsonElement args)
     {
-        var (request, error) = Build(args);
+        var (request, error) = Build(args, commit: true);
         if (error is not null)
             return error;
         var selections = new JsonArray
@@ -191,7 +191,11 @@ public sealed class CreateStudyProgramTool(DownstreamClient api, TimeProvider cl
     private sealed record Request(string Name, string StudyType, string? StudyDuration, int? QuestionsPerDay, int SubjectsPerDay,
         List<int> RestDays, List<int> DifficultSubjectIds, DateOnly Start, DateOnly End);
 
-    private (Request? Request, ToolResult? Error) Build(JsonElement args)
+    /// <summary>
+    /// The stored args are parsed again on commit; dates come only from them (startDate is required), so the card and the commit
+    /// agree. A card confirmed just after midnight keeps its start day (one day of grace on commit).
+    /// </summary>
+    private (Request? Request, ToolResult? Error) Build(JsonElement args, bool commit)
     {
         static (Request?, ToolResult?) Invalid(string message) => (null, ToolResult.Error("InvalidArguments", message));
 
@@ -221,8 +225,8 @@ public sealed class CreateStudyProgramTool(DownstreamClient api, TimeProvider cl
         if (rest.Any(d => d is < 1 or > 7) || rest.Count > 6)
             return Invalid("restDays are 1 (Monday) … 7 (Sunday); at least one study day must remain.");
         var today = LocalTime.Today(clock);
-        var start = String(args, "startDate") is { } s ? LocalTime.Date(s) : today;
-        if (start is null || start < today)
+        var start = LocalTime.Date(String(args, "startDate"));
+        if (start is null || start < (commit ? today.AddDays(-1) : today))
             return Invalid("startDate must be today or later (yyyy-MM-dd).");
         var end = String(args, "endDate") is { } e ? LocalTime.Date(e) : start.Value.AddDays(30);
         if (end is null || end <= start || end.Value.DayNumber - start.Value.DayNumber > MaxDays)
@@ -290,9 +294,18 @@ public sealed class ScheduleStudyPagesTool(DownstreamClient api, TimeProvider cl
 
     public async Task<ToolResult> ExecuteAsync(ToolContext context, JsonElement args)
     {
-        var (programId, items, error) = Parse(args);
+        var (programId, items, error) = Parse(args, commit: false);
         if (error is not null)
             return error;
+        // Each page through the student's scoped single-item read: an id out of the plan / not visible is refused here.
+        var titles = new Dictionary<int, string?>();
+        foreach (var item in items)
+        {
+            var page = await api.GetAsync(context, $"api/study-items/{item.Id}");
+            if (!page.IsSuccess)
+                return ToolResult.Error("StudyPageNotAvailable", $"Study page {item.Id} is not available; use ids from search_study_pages.");
+            titles[item.Id] = Pick.Str(page.Body, "title");
+        }
         var program = await api.GetAsync(context, $"api/program/{programId}");
         if (!program.IsSuccess)
             return program.ToError();
@@ -304,6 +317,7 @@ public sealed class ScheduleStudyPagesTool(DownstreamClient api, TimeProvider cl
             ["items"] = new JsonArray(items.Select(i => (JsonNode)new JsonObject
             {
                 ["studyItemId"] = i.Id,
+                ["title"] = Untrusted(titles[i.Id]),
                 ["startDate"] = i.Start.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
                 ["endDate"] = i.End.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
             }).ToArray()),
@@ -312,7 +326,7 @@ public sealed class ScheduleStudyPagesTool(DownstreamClient api, TimeProvider cl
 
     public async Task<ToolResult> CommitAsync(ToolContext context, JsonElement args)
     {
-        var (programId, items, error) = Parse(args);
+        var (programId, items, error) = Parse(args, commit: true);
         if (error is not null)
             return error;
         var response = await api.PostAsync(context, $"api/program/{programId}/study-pages", new JsonObject
@@ -332,7 +346,7 @@ public sealed class ScheduleStudyPagesTool(DownstreamClient api, TimeProvider cl
 
     private sealed record Item(int Id, DateOnly Start, DateOnly End);
 
-    private (int ProgramId, List<Item> Items, ToolResult? Error) Parse(JsonElement args)
+    private (int ProgramId, List<Item> Items, ToolResult? Error) Parse(JsonElement args, bool commit)
     {
         static (int, List<Item>, ToolResult?) Invalid(string message) => (0, [], ToolResult.Error("InvalidArguments", message));
 
@@ -340,7 +354,7 @@ public sealed class ScheduleStudyPagesTool(DownstreamClient api, TimeProvider cl
             return Invalid("programId is required.");
         if (args.ValueKind != JsonValueKind.Object || !args.TryGetProperty("items", out var list) || list.ValueKind != JsonValueKind.Array)
             return Invalid("items are required.");
-        var today = LocalTime.Today(clock);
+        var today = LocalTime.Today(clock).AddDays(commit ? -1 : 0);
         var items = new List<Item>();
         foreach (var e in list.EnumerateArray().Take(MaxItems))
         {
@@ -460,19 +474,23 @@ public sealed class StartTestTool(DownstreamClient api) : IAssistantWriteTool
     {
         if (Int(args, "worksheetId") is not { } id || id <= 0)
             return ToolResult.Error("InvalidArguments", "worksheetId is required.");
-        var worksheet = await api.GetAsync(context, $"api/worksheet/{id}");
-        if (!worksheet.IsSuccess)
-            return worksheet.ToError();
-        if (Pick.Int(worksheet.Body, "kind") is 1)
+        // The scoped student list, not GET worksheet/{id} (which names any worksheet): only tests open to the student.
+        var listed = await api.GetAsync(context, $"api/worksheet/list?id={id}&pageNumber=1&pageSize=1");
+        if (!listed.IsSuccess)
+            return listed.ToError();
+        var worksheet = Pick.Items(listed.Body).FirstOrDefault(w => Pick.Int(w, "id") == id);
+        if (worksheet is null)
+            return ToolResult.Error("NotFound", "No such test for this student; call search_worksheets.");
+        if (Pick.Int(worksheet, "kind") is 1)
             return ToolResult.Error("NotATest", "This is an activity; open it with ui_open_screen worksheet.");
         var preview = new JsonObject
         {
             ["action"] = "startTest",
             ["worksheetId"] = id,
-            ["name"] = Untrusted(Pick.Str(worksheet.Body, "name")),
-            ["questionCount"] = Pick.Int(worksheet.Body, "questionCount"),
+            ["name"] = Untrusted(Pick.Str(worksheet, "name")),
+            ["questionCount"] = Pick.Int(worksheet, "questionCount"),
         };
-        if (Pick.Int(worksheet.Body, "maxDurationSeconds") is { } seconds && seconds > 0)
+        if (Pick.Int(worksheet, "maxDurationSeconds") is { } seconds && seconds > 0)
             preview["durationMinutes"] = (seconds + 59) / 60;
         return ToolResult.Success(preview);
     }
@@ -579,12 +597,13 @@ public sealed class DeleteWorksheetReminderTool(DownstreamClient api) : IAssista
             return existing.ToError();
         if (Pick.Str(existing.Body, "status") != "Pending")
             return ToolResult.Error("NoReminder", "This test has no pending reminder.");
-        var worksheet = await api.GetAsync(context, $"api/worksheet/{id}");
+        var listed = await api.GetAsync(context, $"api/worksheet/list?id={id}&pageNumber=1&pageSize=1");
+        var worksheet = listed.IsSuccess ? Pick.Items(listed.Body).FirstOrDefault(w => Pick.Int(w, "id") == id) : null;
         return ToolResult.Success(new JsonObject
         {
             ["action"] = "deleteWorksheetReminder",
             ["worksheetId"] = id,
-            ["name"] = worksheet.IsSuccess ? Untrusted(Pick.Str(worksheet.Body, "name")) : null,
+            ["name"] = Untrusted(Pick.Str(worksheet, "name")),
             ["scheduledFor"] = Pick.Str(existing.Body, "scheduledFor"),
         });
     }

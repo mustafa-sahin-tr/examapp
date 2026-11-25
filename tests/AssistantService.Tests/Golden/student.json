@@ -702,13 +702,6 @@
     }
    ]
   },
-  "GET api/worksheet/301": {
-   "id": 301,
-   "name": "Kesirler Deneme Testi",
-   "questionCount": 15,
-   "maxDurationSeconds": 1200,
-   "kind": 0
-  },
   "GET api/worksheet/301/reminder": null,
   "PUT api/worksheet/301/reminder": {
    "worksheetId": 301,

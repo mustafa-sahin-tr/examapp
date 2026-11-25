@@ -98,6 +98,24 @@ public class TopicPerformancePostgresTests : IntegrationTestBase
         result!.Items.ShouldBeEmpty();
     }
 
+    [Fact]
+    public async Task Untouched_topics_come_only_when_asked_and_only_by_topic_issue530()
+    {
+        await SeedAsync();
+        var client = await StudentAsync();
+
+        (await client.GetStringAsync(Api)).ShouldNotContain("untouched");
+        var result = await client.GetFromJsonAsync<TopicPerformanceDto>($"{Api}?includeUntouched=true", Json);
+        // Two answers under the threshold of 5; the only question has no own topic, so the pool has nothing for the topic.
+        var topic = result!.Untouched.ShouldNotBeNull().ShouldHaveSingleItem();
+        (topic.TopicName, topic.SubjectName, topic.AnsweredCount, topic.AvailableQuestionCount, topic.Practicable)
+            .ShouldBe(("Açılar", "Matematik", 2, 0, false));
+
+        var bySubTopic = await client.GetAsync($"{Api}?includeUntouched=true&groupBy=subtopic");
+        bySubTopic.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
+        (await bySubTopic.Content.ReadAsStringAsync()).ShouldContain("InvalidUntouchedGroupBy");
+    }
+
     [Theory]
     [InlineData("days=0", "InvalidDays")]
     [InlineData("days=91", "InvalidDays")]

@@ -10,6 +10,7 @@ public static class ToolRegistration
         services.AddScoped<IAssistantTool, GetMyProfileTool>();
         services.AddScoped<IAssistantTool, SearchTaxonomyTool>();
         services.AddScoped<IAssistantTool, GetMyWeakTopicsTool>();
+        services.AddScoped<IAssistantTool, GetUntouchedTopicsTool>(); // #530
         services.AddScoped<IAssistantTool, GetMyPerformanceSummaryTool>();
         services.AddScoped<IAssistantTool, GetDailySetStatusTool>();
         services.AddScoped<IAssistantTool, ListMyCompletedTestsTool>();

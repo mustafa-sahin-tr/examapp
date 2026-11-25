@@ -147,6 +147,65 @@ public sealed class GetMyWeakTopicsTool(DownstreamClient api) : IAssistantTool
     }
 }
 
+/// <summary>
+/// Issue #530: topics of the student's grade with no or too few answers (under the weak-topics threshold), so "zayıf konun yok" is
+/// never said about topics the student never studied. Practicable topics (the practice pool has questions) first, fewest answers
+/// first; topics with no questions to practice are only counted. The card is a topic table with the answer count.
+/// </summary>
+public sealed class GetUntouchedTopicsTool(DownstreamClient api) : IAssistantTool
+{
+    public const int Take = 10;
+
+    /// <summary>The same threshold as the weak-topics report: a topic with fewer answers is not measured there.</summary>
+    public const int MinQuestions = 5;
+
+    public string Name => "get_untouched_topics";
+    public string Description =>
+        "Topics of the student's grade they never or hardly studied (fewer than 5 answers in the window), with how many questions " +
+        "can be practiced in each. Use for 'hiç çalışmadığım konular', 'sınava hazır mıyım', and before saying there are no weak topics.";
+    public IReadOnlyCollection<string> Roles => Tools.Roles.StudentOnly;
+    public JsonObject InputSchema => Schema(
+        ("days", IntProp("Look-back window in days.", 7, TopicPerformance.MaxDays), false),
+        ("subjectId", IntProp("Limit to one subject."), false));
+
+    public async Task<ToolResult> ExecuteAsync(ToolContext context, JsonElement args)
+    {
+        var days = Math.Clamp(Int(args, "days") ?? TopicPerformance.MaxDays, 7, TopicPerformance.MaxDays);
+        var path = $"api/student/me/topic-performance?days={days}&groupBy=topic&minQuestions={MinQuestions}&includeUntouched=true";
+        if (Int(args, "subjectId") is { } subjectId)
+            path += $"&subjectId={subjectId}";
+        var response = await api.GetAsync(context, path);
+        if (!response.IsSuccess)
+            return response.ToError();
+
+        var all = Pick.Items(Pick.Get(response.Body, "untouched")).ToList();
+        var practicable = all.Where(t => Pick.Get(t, "practicable") is JsonValue v && v.TryGetValue<bool>(out var p) && p).ToList();
+        var shown = practicable.Take(Take)
+            .Select(t => Pick.Only(t, "subjectId", "subjectName", "topicId", "topicName", "answeredCount", "availableQuestionCount"))
+            .ToList();
+        var data = new JsonObject
+        {
+            ["days"] = days,
+            ["minAnswers"] = MinQuestions,
+            ["topics"] = new JsonArray(shown.Select(t => (JsonNode)t).ToArray()),
+            ["practicableCount"] = practicable.Count,
+            ["neverAnsweredCount"] = practicable.Count(t => Pick.Int(t, "answeredCount") is 0),
+            ["withoutPracticeQuestions"] = all.Count - practicable.Count,
+        };
+        var card = new JsonObject
+        {
+            ["kind"] = "topicTable",
+            ["rows"] = new JsonArray(shown.Select(t => (JsonNode)new JsonObject
+            {
+                ["subjectName"] = t["subjectName"]?.DeepClone(),
+                ["topicName"] = t["topicName"]?.DeepClone(),
+                ["answered"] = t["answeredCount"]?.DeepClone(),
+            }).ToArray()),
+        };
+        return ToolResult.Success(data, shown.Count > 0 ? [card] : null);
+    }
+}
+
 public sealed class GetMyPerformanceSummaryTool(DownstreamClient api) : IAssistantTool
 {
     public string Name => "get_my_performance_summary";

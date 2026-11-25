@@ -82,6 +82,29 @@ public class StudentToolTests : IDisposable
     }
 
     [Fact]
+    public async Task Untouched_topics_list_practicable_ones_first_and_only_count_the_rest_issue530()
+    {
+        _h.Api.On("GET", "api/student/me/topic-performance?days=90&groupBy=topic&minQuestions=5&includeUntouched=true&subjectId=3", new
+        {
+            items = Array.Empty<object>(),
+            untouched = new object[]
+            {
+                new { subjectId = 3, subjectName = "Mat", topicId = 11, topicName = "Kesirler", answeredCount = 0, availableQuestionCount = 40, practicable = true },
+                new { subjectId = 3, subjectName = "Mat", topicId = 12, topicName = "Açılar", answeredCount = 2, availableQuestionCount = 12, practicable = true },
+                new { subjectId = 3, subjectName = "Mat", topicId = 13, topicName = "Veri", answeredCount = 0, availableQuestionCount = 0, practicable = false },
+            },
+        });
+
+        var result = await new GetUntouchedTopicsTool(_h.Downstream).ExecuteAsync(Student(), Args(new { subjectId = 3 }));
+
+        result.Data!["topics"]!.AsArray().Select(t => t!["topicId"]!.GetValue<int>()).ShouldBe([11, 12]);
+        (result.Data!["practicableCount"]!.GetValue<int>(), result.Data!["neverAnsweredCount"]!.GetValue<int>(),
+            result.Data!["withoutPracticeQuestions"]!.GetValue<int>()).ShouldBe((2, 1, 1));
+        var rows = result.Cards!.Single()["rows"]!.AsArray();
+        rows.Select(r => r!["answered"]!.GetValue<int>()).ShouldBe([0, 2]);
+    }
+
+    [Fact]
     public async Task Days_are_clamped_and_default_to_30()
     {
         _h.Api.On("GET", "api/student/me/topic-performance?days=30&groupBy=topic", Perf());

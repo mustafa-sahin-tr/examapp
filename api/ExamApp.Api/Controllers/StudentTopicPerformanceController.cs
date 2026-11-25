@@ -29,10 +29,14 @@ public class StudentTopicPerformanceController(
         [FromQuery] int? subjectId = null,
         [FromQuery] string groupBy = TopicPerformanceQuery.DefaultGroupBy,
         [FromQuery] int minQuestions = TopicPerformanceQuery.DefaultMinQuestions,
+        [FromQuery] bool includeUntouched = false,
         CancellationToken ct = default)
     {
         if (!TopicPerformanceQuery.TryParse(days, groupBy, minQuestions, out var grouping, out var problem))
             return BadRequest(new { message = localizer[problem!.MessageKey].Value, errorCode = problem.ErrorCode });
+        // Issue #530: untouched topics are topics; another grouping has nothing to compare them with.
+        if (includeUntouched && grouping != Models.Dtos.TopicPerformanceGroupBy.Topic)
+            return BadRequest(new { message = localizer["student.topicPerformance.invalidUntouchedGroupBy"].Value, errorCode = "InvalidUntouchedGroupBy" });
 
         var user = await GetAuthenticatedUserAsync(ct);
         if (!IsResolvedUser(user))
@@ -42,7 +46,10 @@ public class StudentTopicPerformanceController(
             return NotFound(new { message = localizer["student.profileNotFound"].Value });
 
         var to = DateTime.UtcNow;
-        return Ok(await service.GetAsync(student.Id, to.AddDays(-days), to, subjectId, grouping, minQuestions, ct));
+        var result = await service.GetAsync(student.Id, to.AddDays(-days), to, subjectId, grouping, minQuestions, ct);
+        if (includeUntouched)
+            result.Untouched = await service.GetUntouchedAsync(student.Id, student.GradeId, to.AddDays(-days), to, subjectId, minQuestions, ct);
+        return Ok(result);
     }
 
     /// <summary>Issue #531: bir konu ya da alt konunun haftalık doğruluğu.</summary>

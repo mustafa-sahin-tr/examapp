@@ -89,4 +89,21 @@ public class TopicPerformanceDto
 
     /// <summary>Pencerede cevaplanan ama konusu olmayan farklı soru sayısı; konuya göre gruplarken listeye girmez.</summary>
     public int UnclassifiedCount { get; set; }
+
+    /// <summary>Issue #530: yalnız <c>includeUntouched=true</c> ile dolu; verilmezse yanıtta hiç yok (geri uyumlu).</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public List<UntouchedTopicDto>? Untouched { get; set; }
 }
+
+/// <summary>
+/// Issue #530: öğrencinin sınıfının bir konusu ki pencerede <c>minQuestions</c>'tan az soru cevapladı (0 = hiç).
+/// <c>AvailableQuestionCount</c> pratik havuzunun (#500) o konuda verebileceği soru sayısı; 0 ise <c>Practicable=false</c>.
+/// </summary>
+public sealed record UntouchedTopicDto(
+    int SubjectId,
+    string? SubjectName,
+    int TopicId,
+    string TopicName,
+    int AnsweredCount,
+    int AvailableQuestionCount,
+    bool Practicable);

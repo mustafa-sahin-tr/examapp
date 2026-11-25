@@ -72,7 +72,7 @@ describe('BookImportSetupComponent (#1021)', () => {
     create();
 
     expect(api.setup).toHaveBeenCalledWith('a1');
-    expect(api.pageImage).toHaveBeenCalledWith('a1', 237);
+    expect(api.pageImage).toHaveBeenCalledWith('a1', 237, false, 320);
     expect(el().querySelector('.bis-keypages img')).not.toBeNull();
     expect(text()).toContain('Doğal Sayılar');
     expect(cell(0, 1).closest('label')!.classList).toContain('bis-key__cell--conflict');
@@ -205,7 +205,7 @@ describe('BookImportSetupComponent (#1021)', () => {
 
     const items = el().querySelectorAll<HTMLButtonElement>('[data-testid="key-open"]');
     expect(Array.from(items, (b) => b.textContent!.trim())).toEqual(['s. 172', 's. 223', 's. 224']);
-    expect(api.pageImage.mock.calls.map((c: unknown[]) => c[1])).toEqual([172, 223, 224]);
+    expect(api.pageImage.mock.calls.filter((c: unknown[]) => c[3] === 320).map((c: unknown[]) => c[1])).toEqual([172, 223, 224]);
     expect(el().querySelectorAll('.bis-keypages img').length).toBe(3);
 
     items[2].click();
@@ -411,6 +411,28 @@ describe('BookImportSetupComponent (#1021)', () => {
     box().click();
     fixture.detectChanges();
     expect(c.rows().every((r) => r.include)).toBe(true);
+  });
+
+  it('rowThumbs_LoadFirstPageSmallAndOpenViewer_Issue1358', () => {
+    create();
+    fixture.detectChanges();
+
+    expect(api.pageImage).toHaveBeenCalledWith('a1', 7, false, 128);
+    expect(api.pageImage).toHaveBeenCalledWith('a1', 9, false, 128);
+    const thumbs = fixture.nativeElement.querySelectorAll('[data-testid="row-thumb"]') as NodeListOf<HTMLButtonElement>;
+    expect(thumbs.length).toBe(fixture.componentInstance.rows().length);
+    expect(thumbs[0].querySelector('img')).not.toBeNull();
+
+    thumbs[1].click();
+    fixture.detectChanges();
+    expect(fixture.componentInstance.viewedTest()).toBe(2);
+    expect(api.pageImage).toHaveBeenLastCalledWith('a1', 9, false);
+
+    // Aralık değişince yeni ilk sayfa küçük resmi yüklenir.
+    const c = fixture.componentInstance;
+    c.update(c.rows()[0], { fileFrom: 6 });
+    fixture.detectChanges();
+    expect(api.pageImage).toHaveBeenCalledWith('a1', 6, false, 128);
   });
 
   it('confirm_SendsEditedTestsAndEmitsChanged', () => {

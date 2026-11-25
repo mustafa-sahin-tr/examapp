@@ -19,6 +19,19 @@ public class SkiaImagingTests
         return data.ToArray();
     }
 
+    [Theory]
+    [InlineData(200, 128, 128)]
+    [InlineData(100, 128, 100)]
+    public void Thumbnail_shrinks_to_width_keeping_aspect_and_never_enlarges_Issue1358(int size, int width, int expected)
+    {
+        var thumb = SkiaImaging.Thumbnail(Checkerboard(size), width);
+
+        var header = SkiaImaging.ReadHeader(thumb);
+        header.Format.ShouldBe(SKEncodedImageFormat.Webp);
+        header.Width.ShouldBe(expected);
+        header.Height.ShouldBe(expected);
+    }
+
     [Fact]
     public void CropImage_same_size_is_a_pixel_exact_copy()
     {

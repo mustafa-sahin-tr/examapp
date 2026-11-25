@@ -332,9 +332,11 @@ export class BookImportService {
   }
 
   /** Sayfa görseli (WebP, #1020); yetkili istek olduğundan <img src> yerine blob. */
-  /** `original`: #1234 temizlenmiş sayfanın orijinali. */
-  pageImage(id: string, filePage: number, original = false): Observable<Blob> {
-    const params = original ? { original: true } : undefined;
+  /** `original`: #1234 temizlenmiş sayfanın orijinali. `width`: #1358 küçük resim (64–800 px, sunucuda küçültülür). */
+  pageImage(id: string, filePage: number, original = false, width?: number): Observable<Blob> {
+    const params: Record<string, string | number | boolean> = {};
+    if (original) params['original'] = true;
+    if (width != null) params['width'] = width;
     return this.http.get(`${this.baseUrl}/${id}/pages/${filePage}`, { responseType: 'blob', params });
   }
 

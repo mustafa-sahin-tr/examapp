@@ -199,7 +199,20 @@
             </td>
           </tr>
           <tr [class.bis-excluded]="!row.include">
-            <td colspan="2"></td>
+            <td colspan="2" class="bis-thumb-cell">
+              <!-- #1358: bölümün ilk sayfası; tıklanınca sayfaları tam ekran açılır. -->
+              @if (row.fileFrom != null) {
+              <button type="button" class="bis-thumb" data-testid="row-thumb"
+                [attr.aria-label]="t('setup.viewTestPages', { unit: row.unit, no: row.testNo })"
+                [attr.title]="t('setup.viewTestPages', { unit: row.unit, no: row.testNo })" (click)="showTestPages(row)">
+                @if (pageThumbs().get(row.fileFrom); as src) {
+                <img [src]="src" alt="" />
+                } @else {
+                <span class="bis-thumb__empty" aria-hidden="true"><mat-icon>image</mat-icon></span>
+                }
+              </button>
+              }
+            </td>
             <td class="bis-test">
               <div class="bis-test__meta">
               <span class="bis-muted" aria-hidden="true">{{ t('setup.colMinutes') }}</span>

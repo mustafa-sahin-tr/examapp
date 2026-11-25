@@ -236,6 +236,9 @@ public class PracticeSessionService : IPracticeSessionService
         return new TimeStrugglesDto(kind, filter.Days, items.Count, items.Take(Math.Clamp(take, 1, HardQuestionQueries.MaxTake)).ToList());
     }
 
+    public Task<TopicPeerComparisonsDto> GetTopicPeerComparisonAsync(StudentProfileDto student, int? subjectId, CancellationToken ct = default) =>
+        TopicPeerComparisonQueries.LoadAsync(_context, student, subjectId, _hardQuestions?.CurrentValue ?? new HardQuestionOptions(), ct);
+
     public async Task<RepeatedTrapsDto> GetRepeatedTrapsAsync(StudentProfileDto student, HardQuestionFilter filter, int take, CancellationToken ct = default)
     {
         var options = _hardQuestions?.CurrentValue ?? new HardQuestionOptions();

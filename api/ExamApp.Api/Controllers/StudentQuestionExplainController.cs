@@ -132,4 +132,34 @@ public class StudentQuestionExplainController(
 
         return Ok(await practice.GetRepeatedTrapsAsync(student, new HardQuestionFilter(days, subjectId is { } s ? [s] : [], topicId, null), take, ct));
     }
+
+    /// <summary>
+    /// Issue #527: questions the student answered much slower (<c>kind=slow</c>, right or wrong) or wrong much faster
+    /// (<c>kind=rushed</c>) than their average time (<c>days</c> 1–90, <c>take</c> 1–30). No correct choice.
+    /// </summary>
+    [HttpGet("time-struggles")]
+    [EnableRateLimiting(TopicPerformanceRateLimiting.Policy)]
+    public async Task<IActionResult> GetTimeStruggles(
+        [FromQuery] string kind = TimeStruggleQueries.Slow,
+        [FromQuery] int? subjectId = null,
+        [FromQuery] int? topicId = null,
+        [FromQuery] int? subTopicId = null,
+        [FromQuery] int days = HardQuestionQueries.DefaultDays,
+        [FromQuery] int take = HardQuestionQueries.DefaultTake,
+        CancellationToken ct = default)
+    {
+        if (kind is not (TimeStruggleQueries.Slow or TimeStruggleQueries.Rushed)
+            || days is < 1 or > HardQuestionQueries.MaxDays || take is < 1 or > HardQuestionQueries.MaxTake)
+            return BadRequest(new { message = localizer["student.explain.invalidQuery"].Value, errorCode = "InvalidQuery" });
+
+        var user = await GetAuthenticatedUserAsync(ct);
+        if (!IsResolvedUser(user))
+            return Unauthorized();
+        var student = await students.GetStudentProfile(user.Id);
+        if (student is null)
+            return NotFound(new { message = localizer["student.profileNotFound"].Value });
+
+        return Ok(await practice.GetTimeStrugglesAsync(student, kind,
+            new HardQuestionFilter(days, subjectId is { } s ? [s] : [], topicId, subTopicId), take, ct));
+    }
 }

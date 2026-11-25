@@ -26,6 +26,22 @@ public sealed class HardQuestionOptions
     [Range(2, 100)]
     public int TrapMinMistakes { get; set; } = 3;
 
+    /// <summary>Issue #527: an answer is slow from this many times the average time on.</summary>
+    [Range(1.1, 20)]
+    public double TimeSlowFactor { get; set; } = 2.0;
+
+    /// <summary>Issue #527: a wrong answer is rushed below this share of the average time …</summary>
+    [Range(0.01, 0.9)]
+    public double TimeRushedFactor { get; set; } = 0.25;
+
+    /// <summary>… and at most this many seconds.</summary>
+    [Range(1, 600)]
+    public int TimeRushedMaxSeconds { get; set; } = 15;
+
+    /// <summary>Issue #527: a question's own average needs this many timed answers; below it the subtopic average is used.</summary>
+    [Range(1, 1_000)]
+    public int TimeMinAnswers { get; set; } = 10;
+
     /// <summary>Questions read per batch.</summary>
     [Range(1, 10_000)]
     public int BatchSize { get; set; } = 1_000;

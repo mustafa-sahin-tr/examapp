@@ -79,6 +79,29 @@ public sealed record HardQuestionDto(
 /// <summary>GET api/student/me/hard-questions.</summary>
 public sealed record HardQuestionsDto(string Mode, int? Days, int TotalCount, List<HardQuestionDto> Items);
 
+/// <summary>
+/// Issue #527: a question the student answered much slower (<c>slow</c>, right or wrong) or wrong much faster (<c>rushed</c>)
+/// than its average time. <c>AverageScope</c> is <c>question</c> or <c>subTopic</c> (too few answers to the question itself).
+/// Times in seconds; the average is an aggregate of the other students' timed answers. No correct choice.
+/// </summary>
+public sealed record TimeStruggleDto(
+    int QuestionId,
+    int? SubjectId,
+    string? SubjectName,
+    int? TopicId,
+    string? TopicName,
+    List<string> SubTopicNames,
+    int TimeTakenSeconds,
+    int AverageSeconds,
+    string AverageScope,
+    bool Correct,
+    DateTime AnsweredAt,
+    [property: StorageUrl(StorageArea.QuestionImage)] string? ImageUrl,
+    string? Text);
+
+/// <summary>Issue #527: <c>GET api/student/me/time-struggles</c>.</summary>
+public sealed record TimeStrugglesDto(string Kind, int Days, int TotalCount, List<TimeStruggleDto> Items);
+
 /// <summary>Issue #528: one example of a repeated trap: the student's own choice (label A, B, … and text), never the correct one.</summary>
 public sealed record RepeatedTrapExampleDto(
     int QuestionId,

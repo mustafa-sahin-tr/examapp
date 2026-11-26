@@ -795,5 +795,5 @@ düğmeler, `imageUrlV2` kökü) yerinde durur.
 - Deploy: `TEST_SOLVE_CHOICE_DISPLAY`, `TEST_SOLVE_ALLOW_SWITCH` (`deploy/.env.prod.example`). Arayüz ayarı
   `GET /api/exam/worksheet/test-solve-settings` ile alır; gelene kadar (ya da hata olursa) eski düzen.
 - Yalnız görselli çoktan seçmeli sorularda (kalemin açıldığı sorular); tam görseli olmayan soru eski düzende kalır.
-- Kalem çizimleri iki düzende aynı yerde kalır: iki görselin genişliği ve üst kenarı aynıdır.
+- Kalem çizimlerinin iki düzende aynı yerde kalması iki görselin genişliği ve üst kenarı aynı varsayımına dayanır; düzen değiştirerek kontrol et.
 

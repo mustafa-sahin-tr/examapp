@@ -97,3 +97,21 @@ def test_send_to_fix_unsupported_format_returns_400(tmp_path, monkeypatch):
     Image.new("RGB", (20, 20)).save(buf, format="BMP")
     encoded = base64.b64encode(buf.getvalue()).decode()
     assert client.post("/send-to-fix", json=_fix_payload(encoded)).status_code == 400
+
+
+def test_yolo_models_load_on_the_first_predict_not_at_startup(monkeypatch):
+    # Bellek: torch + modeller yalnız /predict ile yüklenir.
+    assert main._yolo is None or isinstance(main._yolo, tuple)
+    monkeypatch.setattr(main, "_yolo", None)
+    loads = []
+
+    class FakeYolo:
+        def __init__(self, path):
+            loads.append(path)
+
+    with patch("ultralytics.YOLO", FakeYolo):
+        first = main.yolo_models()
+        second = main.yolo_models()
+
+    assert loads == [main.QUESTION_MODEL_PATH, main.ANSWER_MODEL_PATH]
+    assert first is second

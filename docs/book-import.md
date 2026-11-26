@@ -295,6 +295,11 @@ Temizlikte silinen işaretler (`BookImportPage.MarksJson`: harf + kutu) cevap an
      ya da (satır, x) sırasına dizilip dolgulanır (25 px),
      "Cevapları Hizala" kurallarıyla hizalanır, örtüşen dolgu tespit kutularının ortasından kesilir. Kurallar ve toleranslar el ile
      aktarım aracının Python portuyla aynı (2363 px genişliğe ölçekli); testler aynı girdilerde Python sonucuyla karşılaştırıldı.
+     **Kök satırı şıkka taşmaz:** şıklar kökün hemen altında başlayınca yukarı dolgu kökün son satırını şık görseline katıyordu
+     (demo Matematik Soru Bankası'nda çoktan seçmeli soruların ~%23'ü). Sayfa görselinin mürekkep haritasıyla (`PageInk`,
+     koyu = parlaklık < 150) her şıkta tespit tepesinden yukarı bakılır; şıkkın kendi yazısından sonraki boşluğun üstünde yine
+     mürekkep varsa tepe o boşluğun ortasına iner, hizalı satır birlikte iner, hiçbir şık tespit tepesinin altına inmez
+     (`FitTops`). Aktarımda ve düzeltme tuvalinde (`PrepareForCanvas`) uygulanır; görsel çözülemezse eski davranış.
   4. Numaralama sayfaya dayanır: kurulum taramasının okuduğu "sayfadaki en büyük soru no" (`BookImportPages.MaxQuestionNumber`)
      varsa sayfa önceki sayfanın sonundan başlar; eksik tespit sonraki sayfayı kaydırmaz. Cevap anahtardan (`AnswerKey[no-1]`).
   5. Kayıt: `ILabelingBankService.SaveImportedPageAsync` (ayrı DI scope'u) — `pages/bank` ile aynı kırpma, kitap kaynağı

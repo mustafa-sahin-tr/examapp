@@ -205,6 +205,76 @@ public class BookQuestionLayoutTests
         prepared.Options.Select(o => (o.X, o.Y)).ShouldBe([(125, 475), (575, 475), (125, 625), (575, 625)]);
     }
 
+    // Şıklar kökün hemen altında başlayınca 25 px yukarı pay kökün son satırını şık görseline katıyordu.
+    private static readonly LayoutQuestion TightOptions = new(B(100, 100, 1000, 700),
+        [B(150, 500, 200, 60), B(600, 500, 200, 60), B(150, 650, 200, 60), B(600, 650, 200, 60)]);
+
+    private static RowInk Ink(params (int From, int To, int X0, int X1)[] bands) =>
+        (y, x0, x1) => bands.Any(b => y >= b.From && y <= b.To && b.X0 < x1 && b.X1 > x0);
+
+    [Fact]
+    public void Prepare_StopsTheTopPaddingInTheGapAboveTheOptions_WhenTheStemEndsJustAbove()
+    {
+        // Kökün son satırı 460–480, şık yazısı 505'ten başlıyor: tepe 481–499 boşluğunun ortasına iner.
+        var ink = Ink((460, 480, 100, 1100), (505, 555, 160, 340), (505, 555, 610, 790), (655, 705, 160, 340), (655, 705, 610, 790));
+
+        var prepared = BookQuestionLayout.Prepare(TightOptions, Width, Height, ink);
+        var plain = BookQuestionLayout.Prepare(TightOptions, Width, Height);
+
+        prepared.Options.Take(2).ShouldAllBe(o => o.Y == 490);
+        prepared.Options.Take(2).Select(o => o.Bottom).ShouldBe(plain.Options.Take(2).Select(o => o.Bottom));
+        prepared.Options.Skip(2).ShouldBe(plain.Options.Skip(2));
+        prepared.Box.ShouldBe(plain.Box);
+    }
+
+    [Fact]
+    public void Prepare_KeepsTheTopPadding_WhenNothingIsInkedAboveTheOption()
+    {
+        var ink = Ink((300, 380, 100, 1100), (505, 555, 160, 340), (505, 555, 610, 790));
+
+        BookQuestionLayout.Prepare(TightOptions, Width, Height, ink).Options
+            .ShouldBe(BookQuestionLayout.Prepare(TightOptions, Width, Height).Options);
+    }
+
+    [Fact]
+    public void Prepare_KeepsTheTopPadding_WhenTheDetectionCutTheOptionsOwnFirstLine()
+    {
+        // Tespit şıkkın ilk satırını kesmiş (yazı 490'da başlıyor, kutu 500'de); üstünde kök yok: pay korunur.
+        var ink = Ink((490, 555, 160, 340), (490, 555, 610, 790));
+
+        BookQuestionLayout.Prepare(TightOptions, Width, Height, ink).Options.Take(2).ShouldAllBe(o => o.Y == 475);
+    }
+
+    [Fact]
+    public void Prepare_MovesAnAlignedRowTogether_ButNeverBelowAnyDetectedTop()
+    {
+        // Kökün son satırı yalnız A'nın üstünde; B'nin tespiti 490'da. Satır birlikte iner, B'nin tespit tepesini geçmez.
+        var question = new LayoutQuestion(B(100, 100, 1000, 700), [B(150, 500, 200, 60), B(600, 490, 200, 70)]);
+        var ink = Ink((460, 480, 100, 400), (505, 555, 160, 340), (495, 555, 610, 790));
+
+        BookQuestionLayout.Prepare(question, Width, Height, ink).Options.ShouldAllBe(o => o.Y == 490);
+    }
+
+    [Fact]
+    public void PageInk_FindsDarkPixelsInARowSpan_AndIgnoresLightGrayAndSingleDots()
+    {
+        using var bitmap = new SkiaSharp.SKBitmap(40, 10);
+        bitmap.Erase(SkiaSharp.SKColors.White);
+        for (var x = 10; x < 20; x++)
+            bitmap.SetPixel(x, 2, SkiaSharp.SKColors.Black);
+        for (var x = 0; x < 40; x++)
+            bitmap.SetPixel(x, 5, new SkiaSharp.SKColor(200, 200, 200));
+        bitmap.SetPixel(30, 7, SkiaSharp.SKColors.Black);
+
+        var ink = PageInk.FromBitmap(bitmap);
+
+        ink.RowHasInk(2, 0, 40).ShouldBeTrue();
+        ink.RowHasInk(2, 20, 40).ShouldBeFalse();
+        ink.RowHasInk(5, 0, 40).ShouldBeFalse();
+        ink.RowHasInk(7, 0, 40).ShouldBeFalse();
+        ink.RowHasInk(-1, 0, 40).ShouldBeFalse();
+    }
+
     // Issue #1301: düzeltme tuvali ham Claude kutularını gösteriyordu; kayıtta şık satırı kesiliyordu.
     [Fact]
     public void PrepareForCanvas_PadsOptions_GrowsTheQuestion_OrdersByLetter_AndLeavesTheInputAlone()

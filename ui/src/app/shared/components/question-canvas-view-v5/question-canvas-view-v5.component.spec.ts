@@ -580,6 +580,53 @@ describe('QuestionCanvasViewComponentv5', () => {
             expect(Array.from(host.querySelectorAll('.qcv4-answer-letter')).map((e) => e.textContent)).toEqual(['A', 'B', 'C', 'D']);
         });
 
+        it('choicesInImage_ShowsFullImageWithOneRowOfLetters', () => {
+            const host = bindHost(500, 800);
+            const region = { ...tallRegion(), layoutChoice: 'side', imageUrlV2: svgUrl(2000, 1000) } as QuestionRegion;
+            fixture.componentRef.setInput('questionRegion', region);
+            fixture.componentRef.setInput('choicesInImage', true);
+            fixture.detectChanges();
+            component.updateVisualScale();
+            fixture.detectChanges();
+
+            expect(component.wholeFigure()).toBe(true);
+            expect(component.letterBar()).toBe(true);
+            expect(component.plan()?.arrangement).toBe('top');
+            expect((host.querySelector('.qcv4-question-image') as HTMLImageElement).src).toBe(region.imageUrl);
+            const grid = host.querySelector('.qcv4-answers-grid--letters') as HTMLElement;
+            expect(grid).not.toBeNull();
+            expect(getComputedStyle(grid).gridTemplateColumns.split(' ').length).toBe(4);
+            expect(Array.from(host.querySelectorAll('.qcv4-answer-letter')).map((e) => e.textContent)).toEqual(['A', 'B', 'C', 'D']);
+        });
+
+        it('choicesInImage_LetterSelectsTheChoice', () => {
+            const host = bindHost(1000, 800);
+            const region = tallRegion();
+            fixture.componentRef.setInput('questionRegion', region);
+            fixture.componentRef.setInput('choicesInImage', true);
+            fixture.detectChanges();
+            component.updateVisualScale();
+            fixture.detectChanges();
+            const picked: AnswerChoice[] = [];
+            component.choiceSelected.subscribe((choice) => picked.push(choice));
+
+            (host.querySelectorAll('.qcv4-answer-card')[2] as HTMLElement).click();
+
+            expect(picked.map((choice) => choice.label)).toEqual(['C']);
+        });
+
+        it('choicesInImageOff_KeepsChoiceImages', () => {
+            const host = bindHost(1000, 800);
+            fixture.componentRef.setInput('questionRegion', tallRegion());
+            fixture.componentRef.setInput('choicesInImage', false);
+            fixture.detectChanges();
+            component.updateVisualScale();
+            fixture.detectChanges();
+
+            expect(component.wholeFigure()).toBe(false);
+            expect(host.querySelectorAll('.qcv4-answer-image').length).toBe(4);
+        });
+
         it('choiceWithoutImage_FallsBackToWholeFigure', () => {
             bindHost(1000, 800);
             const region = tallRegion();

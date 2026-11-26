@@ -162,6 +162,21 @@ export class TestSolveCanvasComponentv3 extends TestSolveCanvasComponentv2 {
   protected readonly scratchPadOpen = signal(false);
   /** Issue #1175: açıkken soru görselinin üstüne çizilir; şıklar görselin dışında olduğu için seçim etkilenmez. */
   protected readonly inkMode = signal(false);
+  /**
+   * Deneme: soru şıklarıyla tek görsel, şıklar altta harf düğmesi; kalemle şıkların üstüne de çizilir (şık eleme).
+   * Cihazda hatırlanır; kapalıyken eski düzen (şıklar ayrı görsel düğme).
+   */
+  protected readonly choicesInImage = signal(readChoicesInImage());
+
+  protected toggleChoicesInImage(): void {
+    const next = !this.choicesInImage();
+    this.choicesInImage.set(next);
+    try {
+      localStorage.setItem(CHOICES_IN_IMAGE_KEY, next ? '1' : '0');
+    } catch {
+      // Gizli pencere / kapalı depolama: yalnız bu oturumda geçerli.
+    }
+  }
   private readonly inkLayers = viewChildren(TestSolveQuestionInkComponent);
   private readonly overlay = inject(Overlay);
   private readonly viewContainerRef = inject(ViewContainerRef);
@@ -619,5 +634,15 @@ export class TestSolveCanvasComponentv3 extends TestSolveCanvasComponentv2 {
     this.detachFullscreenOverlay();
 
     super.ngOnDestroy();
+  }
+}
+
+const CHOICES_IN_IMAGE_KEY = 'testSolve.choicesInImage';
+
+function readChoicesInImage(): boolean {
+  try {
+    return localStorage.getItem(CHOICES_IN_IMAGE_KEY) !== '0';
+  } catch {
+    return true;
   }
 }

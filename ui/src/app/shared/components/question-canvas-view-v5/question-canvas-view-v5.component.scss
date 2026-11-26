@@ -251,6 +251,32 @@
   }
 }
 
+// Şıklar görselde (deneme): tek satır harf düğmeleri, soru görseli kadar geniş değil; parmak / kalemle kolay basılır.
+.qcv4-answers-grid--letters {
+  width: 100%;
+  max-width: 480px;
+
+  .qcv4-answer-card {
+    justify-content: center;
+  }
+
+  // Düğme dar: rozette yalnız "Seçtin" kalır (harf düğmenin kendisinde), seçili düğme dolu renkli.
+  .qcv4-answer-check {
+    right: 50%;
+    transform: translateX(50%);
+    padding: 2px 8px;
+    white-space: nowrap;
+  }
+
+  .qcv4-answer-check__letter {
+    display: none;
+  }
+
+  .qcv4-answer-card.is-selected .qcv4-answer-letter {
+    color: var(--primaryColor);
+  }
+}
+
 .qcv4-answer-letter {
   width: 100%;
   text-align: center;

@@ -27,7 +27,7 @@
       }
     </div>
   }
-  <div class="qcv4-container" [class]="containerClass()" [class.qcv4-pane-hidden]="passageArrangement() === 'tabs' && activePane() !== 'question'" [style.--qcv-answer-cols]="plan()?.answerColumns ?? null">
+  <div class="qcv4-container" [class]="containerClass()" [class.qcv4-pane-hidden]="passageArrangement() === 'tabs' && activePane() !== 'question'" [style.--qcv-answer-cols]="letterBar() ? (_questionRegion().answers?.length ?? null) : (plan()?.answerColumns ?? null)">
     <div class="qcv4-question-image-wrapper">
       <div #questionImageBox class="qcv4-main-image-box" [class.qcv4-main-image-box--zoom-row]="questionZoomAvailable()">
         <!-- #1175: görselin üstüne katman (ör. kalemle karalama) koyulabilsin diye görsel kadar çerçeve. -->
@@ -46,7 +46,7 @@
         }
         </div>
       </div>
-      <div class="qcv4-answers-grid" [style.width.px]="singleColumnAnswersWidth()">
+      <div class="qcv4-answers-grid" [class.qcv4-answers-grid--letters]="letterBar()" [style.width.px]="singleColumnAnswersWidth()">
         @for (answer of _questionRegion().answers; track $index) {
           <div class="qcv4-answer-card" [ngClass]="getAnswerClasses(answer)" role="button" tabindex="0"
             [attr.aria-pressed]="isSelected(answer)" [attr.aria-label]="t('choiceAria', { label: answer.label || $index + 1 })"

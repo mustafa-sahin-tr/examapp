@@ -223,5 +223,9 @@
     "confirm": "Leave",
     "cancel": "Cancel",
     "saveFailed": "Your last answer wasn't saved, so you haven't left. Check your connection and try again."
+  },
+  "choicesInImage": {
+    "open": "Choices in image",
+    "title": "Show the choices inside the question image: you can cross a choice out with the pen and pick the answer from the letters below"
   }
 }

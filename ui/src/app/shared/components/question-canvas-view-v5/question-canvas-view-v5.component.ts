@@ -213,6 +213,17 @@ export class QuestionCanvasViewComponentv5 {
   get hidePassage(): boolean {
     return this._hidePassage;
   }
+  /**
+   * Deneme: soru şıklarıyla birlikte tek görsel (kayıtlı tam soru görseli), şıklar altta tek satır harf düğmesi.
+   * Kalemle şıkların üstüne de çizilebilir (şık eleme). Tam görsel yoksa eski düzen kalır.
+   */
+  @Input() set choicesInImage(value: boolean) {
+    this._choicesInImage.set(value);
+    queueMicrotask(() => this.updateVisualScale());
+  }
+  private readonly _choicesInImage = signal(false);
+  /** Harf düğmeleri tek satırda; düğme sayısı sütun sayısıdır. */
+  readonly letterBar = computed(() => this._choicesInImage() && this.wholeFigure());
   @Input() set selectedChoice(choice: AnswerChoice | undefined) {
     this._selectedChoice.set(choice);
   }
@@ -377,15 +388,22 @@ export class QuestionCanvasViewComponentv5 {
         (passagePlan?.arrangement === 'tabs' ? PANE_TABS_HEIGHT_PX : 0);
     }
 
+    // Harf satırı: tek satırlık (bir düğme yüksekliği) yer ayrılır, soru hep üstte.
+    const letterBar = whole && this._choicesInImage();
+    const answers = (region.answers ?? []).map((answer) =>
+      whole ? { width: 0, height: 0 } : { width: answer.width || 0, height: answer.height || 0 },
+    );
     const plan = planQuestionLayout({
       question: { width: region.width, height: questionHeight },
-      answers: (region.answers ?? []).map((answer) =>
-        whole ? { width: 0, height: 0 } : { width: answer.width || 0, height: answer.height || 0 },
-      ),
+      answers: letterBar ? answers.slice(0, 1) : answers,
       width: passagePlan ? passagePlan.questionWidth : hostWidth,
       height: availableHeight,
       ...this.scaleLimits(region),
-      arrangement: region.layoutChoice === 'whole' ? undefined : (region.layoutChoice ?? undefined),
+      arrangement: letterBar
+        ? 'top'
+        : region.layoutChoice === 'whole'
+          ? undefined
+          : (region.layoutChoice ?? undefined),
     });
 
     this.plan.set(plan);
@@ -404,7 +422,11 @@ export class QuestionCanvasViewComponentv5 {
     if (!this.enableHeightFit || !region.imageUrl) {
       return false;
     }
-    return region.layoutChoice === 'whole' || (region.answers ?? []).some((answer) => !answer.imageUrl);
+    return (
+      this._choicesInImage() ||
+      region.layoutChoice === 'whole' ||
+      (region.answers ?? []).some((answer) => !answer.imageUrl)
+    );
   }
 
   /** Aynı sayfanın soruları aynı üst sınırı paylaşır; yer varsa hepsi aynı metin boyutunda görünür. */

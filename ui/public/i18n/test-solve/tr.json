@@ -223,5 +223,9 @@
     "confirm": "Çık",
     "cancel": "Vazgeç",
     "saveFailed": "Son cevabın kaydedilemedi, çıkılmadı. Bağlantını kontrol edip tekrar dene."
+  },
+  "choicesInImage": {
+    "open": "Şıklar görselde",
+    "title": "Şıkları soru görselinde göster: kalemle şıkkın üstünü çizebilirsin, cevabı alttaki harflerden seç"
   }
 }

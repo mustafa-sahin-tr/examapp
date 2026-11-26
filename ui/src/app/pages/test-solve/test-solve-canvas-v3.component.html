@@ -171,6 +171,17 @@
             <span class="solve-dock__label">{{ t('scratch.open') }}</span>
           </button>
 
+          <!-- Deneme: şıklar soru görselinde (kalemle şıkkın üstü çizilebilir), seçim alttaki harf düğmeleriyle. -->
+          @if (activeQuestion && inkAvailable(activeQuestion)) {
+          <button mat-stroked-button class="solve-dock__tool" [class.is-active]="choicesInImage()"
+            data-testid="solve-choices-in-image-toggle" (click)="toggleChoicesInImage()"
+            [matTooltip]="t('choicesInImage.title')" [attr.aria-label]="t('choicesInImage.title')"
+            [attr.aria-pressed]="choicesInImage()">
+            <mat-icon>image</mat-icon>
+            <span class="solve-dock__label">{{ t('choicesInImage.open') }}</span>
+          </button>
+          }
+
           <!-- Issue #1175: soru görselinin üstüne çizme; açıkken geri al / temizle etkin sorunun çizimine. -->
           @if (activeQuestion && inkAvailable(activeQuestion)) {
           <button mat-stroked-button class="solve-dock__tool" [class.is-active]="inkMode()" data-testid="solve-ink-toggle"
@@ -695,6 +706,7 @@
         <app-question-canvas-view-v5 #canvasView class="canvas-stage" [questionRegion]="questionData.region"
           [imageRefresh]="imageRefresh"
           [enableHeightFit]="true" [hidePassage]="isPassageFirstActive(questionData.index)"
+          [choicesInImage]="choicesInImage()"
           [selectedChoice]="selectedChoices().get(questionData.region.id)"
           (choiceSelected)="selectChoiceForQuestion($event, questionData.index)"
           (answerOpened)="openAnswer($event)"

@@ -9,7 +9,7 @@ import { TranslocoTestingModule } from '@jsverse/transloco';
 
 import { TestSolveCanvasComponentv3 } from './test-solve-canvas-v3.component';
 import { isTestCompletedRejection, isTimeExpiredRejection } from './test-solve-canvas-enhanced.component';
-import { TestService } from '../../services/test.service';
+import { TestService, TestSolveSettings } from '../../services/test.service';
 import { QuestionReportService } from '../../services/question-report.service';
 import { QuestionReportDialogData } from './question-report-dialog.component';
 import { readInkStrokes, readScratchNotes, writeInkStrokes, writeScratchNotes } from './test-solve-scratch-store';
@@ -75,6 +75,8 @@ describe('TestSolveCanvasComponentv3 — finish flow (issue #383)', () => {
     let snackBar: MockedObject<MatSnackBar>;
     let navigateSpy: Mock;
 
+    let solveSettings: TestSolveSettings = { choiceDisplay: 'Separate', allowStudentSwitch: true };
+
     function dialogReturns(result: unknown) {
         dialog.open.mockReturnValue({ afterClosed: () => of(result) } as ReturnType<MatDialog['open']>);
     }
@@ -86,8 +88,10 @@ describe('TestSolveCanvasComponentv3 — finish flow (issue #383)', () => {
             completeTest: vi.fn().mockName("TestService.completeTest"),
             saveDrawings: vi.fn().mockName("TestService.saveDrawings"),
             getCanvasTestWithAnswers: vi.fn().mockName("TestService.getCanvasTestWithAnswers"),
-            convertTestInstanceToRegions: vi.fn().mockName("TestService.convertTestInstanceToRegions")
+            convertTestInstanceToRegions: vi.fn().mockName("TestService.convertTestInstanceToRegions"),
+            getTestSolveSettings: vi.fn().mockName("TestService.getTestSolveSettings")
         } as unknown as MockedObject<TestService>;
+        testService.getTestSolveSettings.mockReturnValue(of(solveSettings));
         testService.completeTest.mockReturnValue(of(OK));
         testService.saveAnswer.mockReturnValue(of(OK));
         testService.saveDrawings.mockReturnValue(of(undefined));
@@ -122,7 +126,43 @@ describe('TestSolveCanvasComponentv3 — finish flow (issue #383)', () => {
         component['markQuestionDirty'](0);
     });
 
-    afterEach(() => fixture.destroy());
+    afterEach(() => {
+        fixture.destroy();
+        solveSettings = { choiceDisplay: 'Separate', allowStudentSwitch: true };
+    });
+
+    describe('choice display setting', () => {
+        function recreate(settings: TestSolveSettings) {
+            fixture.destroy();
+            testService.getTestSolveSettings.mockReturnValue(of(settings));
+            fixture = TestBed.createComponent(TestSolveCanvasComponentv3);
+            component = fixture.componentInstance;
+        }
+
+        it('follows the server default when the student has not chosen', () => {
+            recreate({ choiceDisplay: 'InImage', allowStudentSwitch: true });
+            expect(component['choicesInImage']()).toBe(true);
+            recreate({ choiceDisplay: 'Separate', allowStudentSwitch: true });
+            expect(component['choicesInImage']()).toBe(false);
+        });
+
+        it('remembers the student switch on the device', () => {
+            recreate({ choiceDisplay: 'Separate', allowStudentSwitch: true });
+            component['toggleChoicesInImage']();
+            expect(component['choicesInImage']()).toBe(true);
+            expect(localStorage.getItem('testSolve.choicesInImage')).toBe('1');
+
+            recreate({ choiceDisplay: 'Separate', allowStudentSwitch: true });
+            expect(component['choicesInImage']()).toBe(true);
+        });
+
+        it('ignores the device choice and hides the switch when switching is off', () => {
+            localStorage.setItem('testSolve.choicesInImage', '1');
+            recreate({ choiceDisplay: 'Separate', allowStudentSwitch: false });
+            expect(component['choicesInImage']()).toBe(false);
+            expect(component['canSwitchChoiceDisplay']()).toBe(false);
+        });
+    });
 
     it('review dialog lists empty and bookmarked questions; cancel keeps the test running', async () => {
         dialogReturns(undefined);
@@ -1048,6 +1088,7 @@ describe('TestSolveCanvasComponentv3 — matrixChoice (#574)', () => {
             completeTest: vi.fn(),
             getCanvasTestWithAnswers: vi.fn(),
             convertTestInstanceToRegions: vi.fn(),
+            getTestSolveSettings: vi.fn(() => of({ choiceDisplay: "Separate", allowStudentSwitch: true })),
         } as unknown as MockedObject<TestService>;
         testService.saveAnswer.mockReturnValue(of(OK));
         await TestBed.configureTestingModule({

@@ -108,6 +108,11 @@ export class TestService {
     return this.http.get<TestInstance>(`${this.baseUrl}/test-instance/${testInstanceId}`);
   }
 
+  /** Test çözme ekranında şık gösterimi (sunucu ayarı `TestSolve`). */
+  getTestSolveSettings(): Observable<TestSolveSettings> {
+    return this.http.get<TestSolveSettings>(`${this.baseUrl}/test-solve-settings`);
+  }
+
   getCanvasTestWithAnswers(testInstanceId: number): Observable<TestInstance> {
     return this.http.get<TestInstance>(`${this.baseUrl}/test-canvas-instance/${testInstanceId}`);
   }
@@ -432,4 +437,11 @@ export class TestService {
 
     return regions;
   }
+}
+
+export type TestSolveChoiceDisplay = 'Separate' | 'InImage';
+
+export interface TestSolveSettings {
+  choiceDisplay: TestSolveChoiceDisplay;
+  allowStudentSwitch: boolean;
 }

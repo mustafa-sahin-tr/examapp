@@ -663,6 +663,16 @@ public class ExamController : BaseController
     }
 
 
+    /// <summary>Test çözme ekranı ayarları: şık gösterimi ve öğrencinin değiştirip değiştiremeyeceği.</summary>
+    [HttpGet("test-solve-settings")]
+    [Authorize(Roles = "Student,Teacher,Admin")]
+    public IActionResult GetTestSolveSettings([FromServices] Microsoft.Extensions.Options.IOptions<TestSolveOptions> options)
+    {
+        var value = options.Value;
+        return Ok(new TestSolveSettingsDto(value.ChoiceDisplay, value.AllowStudentSwitch));
+    }
+
+
     [HttpGet("test-canvas-instance/{testInstanceId}")]
     [Authorize(Roles = "Student,Teacher,Admin")] // issue #287 review H1: ApprovedTeacher policy tek başına rol kapısı değil
     [Authorize(Policy = ApprovedTeacherPolicies.TeacherOrStudentCapability)] // issue #287

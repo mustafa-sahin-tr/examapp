@@ -172,7 +172,7 @@
           </button>
 
           <!-- Deneme: şıklar soru görselinde (kalemle şıkkın üstü çizilebilir), seçim alttaki harf düğmeleriyle. -->
-          @if (activeQuestion && inkAvailable(activeQuestion)) {
+          @if (canSwitchChoiceDisplay() && activeQuestion && inkAvailable(activeQuestion)) {
           <button mat-stroked-button class="solve-dock__tool" [class.is-active]="choicesInImage()"
             data-testid="solve-choices-in-image-toggle" (click)="toggleChoicesInImage()"
             [matTooltip]="t('choicesInImage.title')" [attr.aria-label]="t('choicesInImage.title')"

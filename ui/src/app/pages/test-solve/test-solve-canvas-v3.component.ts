@@ -10,6 +10,7 @@ import {
   viewChildren,
   ChangeDetectionStrategy
 } from '@angular/core';
+import { toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { Overlay, OverlayRef } from '@angular/cdk/overlay';
@@ -74,7 +75,7 @@ import { QuestionCanvasMazeTreeComponent } from '../../shared/components/questio
 import { QuestionCanvasTextSelectComponent } from '../../shared/components/question-canvas-text-select/question-canvas-text-select.component';
 import { FLUSHABLE_PLAYER } from '../../shared/utils/flushable-player';
 import { StorageImageRetryDirective } from '../../shared/directives/storage-image-retry.directive';
-import { firstValueFrom } from 'rxjs';
+import { catchError, firstValueFrom, of } from 'rxjs';
 
 /**
  * Sınav çözme ekranı (issue #72 yeniden tasarımı).
@@ -163,14 +164,26 @@ export class TestSolveCanvasComponentv3 extends TestSolveCanvasComponentv2 {
   /** Issue #1175: açıkken soru görselinin üstüne çizilir; şıklar görselin dışında olduğu için seçim etkilenmez. */
   protected readonly inkMode = signal(false);
   /**
-   * Deneme: soru şıklarıyla tek görsel, şıklar altta harf düğmesi; kalemle şıkların üstüne de çizilir (şık eleme).
-   * Cihazda hatırlanır; kapalıyken eski düzen (şıklar ayrı görsel düğme).
+   * Şık gösterimi: `InImage` iken soru şıklarıyla tek görsel, şıklar altta harf düğmesi; kalemle şıkkın üstü çizilir (şık eleme).
+   * Varsayılan sunucu ayarından (`TestSolve:ChoiceDisplay`); `AllowStudentSwitch` açıksa öğrencinin cihazdaki seçimi önce gelir.
+   * Ayar gelene kadar eski düzen (ayrı şık düğmeleri).
    */
-  protected readonly choicesInImage = signal(readChoicesInImage());
+  private readonly solveSettings = toSignal(
+    inject(TestService).getTestSolveSettings().pipe(catchError(() => of(null))),
+    { initialValue: null },
+  );
+  private readonly choicesInImagePreference = signal(readChoicesInImage());
+  protected readonly canSwitchChoiceDisplay = computed(() => this.solveSettings()?.allowStudentSwitch ?? false);
+  protected readonly choicesInImage = computed(() => {
+    const settings = this.solveSettings();
+    const preference = this.choicesInImagePreference();
+    if (settings?.allowStudentSwitch && preference !== null) return preference;
+    return settings?.choiceDisplay === 'InImage';
+  });
 
   protected toggleChoicesInImage(): void {
     const next = !this.choicesInImage();
-    this.choicesInImage.set(next);
+    this.choicesInImagePreference.set(next);
     try {
       localStorage.setItem(CHOICES_IN_IMAGE_KEY, next ? '1' : '0');
     } catch {
@@ -639,10 +652,12 @@ export class TestSolveCanvasComponentv3 extends TestSolveCanvasComponentv2 {
 
 const CHOICES_IN_IMAGE_KEY = 'testSolve.choicesInImage';
 
-function readChoicesInImage(): boolean {
+/** Öğrencinin cihazdaki seçimi; seçmediyse null (sunucu ayarı geçerli). */
+function readChoicesInImage(): boolean | null {
   try {
-    return localStorage.getItem(CHOICES_IN_IMAGE_KEY) !== '0';
+    const stored = localStorage.getItem(CHOICES_IN_IMAGE_KEY);
+    return stored === null ? null : stored === '1';
   } catch {
-    return true;
+    return null;
   }
 }

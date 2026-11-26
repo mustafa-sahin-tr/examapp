@@ -741,6 +741,9 @@ builder.Services.AddScoped<ExamApp.Api.Services.Entitlements.ISchoolLicenseServi
 ExamApp.Api.Services.Entitlements.PlanRequirementServiceCollectionExtensions.AddPlanRequirement(builder.Services, builder.Configuration); // Issue #1090
 builder.Services.AddScoped<ExamApp.Api.Services.BookImport.IBookImportService, ExamApp.Api.Services.BookImport.BookImportService>();
 builder.Services.AddScoped<ExamApp.Api.Services.BookImport.IQuickAddService, ExamApp.Api.Services.BookImport.QuickAddService>(); // issue #1052
+// Test çözme ekranında şık gösterimi (ayrı düğme / soru görselinde).
+builder.Services.Configure<ExamApp.Api.Services.Worksheets.TestSolveOptions>(
+    builder.Configuration.GetSection(ExamApp.Api.Services.Worksheets.TestSolveOptions.Section));
 // issue #1111: öğretmene soru sor + süresi dolan soruları kapatan iş.
 builder.Services.Configure<ExamApp.Api.Services.AskTeacher.AskTeacherOptions>(
     builder.Configuration.GetSection(ExamApp.Api.Services.AskTeacher.AskTeacherOptions.Section));

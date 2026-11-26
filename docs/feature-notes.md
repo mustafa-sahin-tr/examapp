@@ -782,3 +782,18 @@ ayrı alır. Takipte hedef adı "5. Sınıf / A", `TargetType=Section`.
   / çağrı, kalan sayısı döner. Olay `QuestionCreatedEvent` outbox'a kaynak boş yazılır (tüketici "AI" kaynaklı olayı atlar);
   alt konusu olan sorular alınmaz (öğretmen kilidi konuyla birlikte konduğundan kilitli sorular bu kümede değil). Plan sınırı
   (#1031) uygulanmaz: admin kararı. Aynı soruyu tekrar sıraya almak engellenmez (iki basış = iki AI çağrısı).
+
+## Test çözmede şıklar soru görselinde
+
+Öğrenci kalemle şıkkın üstünü çizerek eleyebilsin diye test çözme ekranı soruyu kayıtlı tam görseliyle (kök + şıklar,
+`region.imageUrl`) gösterebilir; seçim görselin altındaki tek satır harf düğmeleriyle yapılır. Eski düzen (şıklar ayrı görsel
+düğmeler, `imageUrlV2` kökü) yerinde durur.
+
+- Sunucu ayarı `TestSolve:ChoiceDisplay`: `Separate` (varsayılan) | `InImage`; `TestSolve:AllowStudentSwitch` (varsayılan `true`)
+  açıksa alt çubukta "Şıklar görselde" düğmesi çıkar, öğrencinin seçimi cihazda (`testSolve.choicesInImage`) hatırlanır ve
+  varsayılanın önüne geçer. Kapalıyken herkes sunucu ayarını görür.
+- Deploy: `TEST_SOLVE_CHOICE_DISPLAY`, `TEST_SOLVE_ALLOW_SWITCH` (`deploy/.env.prod.example`). Arayüz ayarı
+  `GET /api/exam/worksheet/test-solve-settings` ile alır; gelene kadar (ya da hata olursa) eski düzen.
+- Yalnız görselli çoktan seçmeli sorularda (kalemin açıldığı sorular); tam görseli olmayan soru eski düzende kalır.
+- Kalem çizimleri iki düzende aynı yerde kalır: iki görselin genişliği ve üst kenarı aynıdır.
+

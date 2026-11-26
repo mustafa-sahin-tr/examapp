@@ -275,10 +275,11 @@ internal sealed class BookQuestionImportStage(
             var toSave = new List<LabelingBankQuestionDto>();
             var savedIndexes = new Dictionary<int, int>();
             var marks = BookMarkKeys.Parse(page.MarksJson);
+            var ink = BookQuestionLayout.InkOf(imageBase64, width, height);
             for (var i = 0; i < questions.Count; i++)
             {
                 var number = questionNumbers[i];
-                var prepared = BookQuestionLayout.Prepare(questions[i], width, height);
+                var prepared = BookQuestionLayout.Prepare(questions[i], width, height, ink);
                 if (prepared.Options.Count != ExpectedOptions)
                     flags.Add(BookImportReviewFlag.OptionCount, filePage, [number]);
                 if (prepared.Options.Count is < LabelingBankService.MinOptions or > LabelingBankService.MaxOptions)

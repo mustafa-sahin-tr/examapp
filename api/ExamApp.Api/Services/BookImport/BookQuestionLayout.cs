@@ -125,8 +125,9 @@ public static class BookQuestionLayout
     /// <summary>
     /// Kayda gidecek soru: soru kutusu taşan şıkları (dolgu dahil) içerecek kadar büyür; şıklar harflerine ya da okuma
     /// sırasına (satır, x) dizilir, dolgulanır, hizalanır ve komşuya taşan dolgu tespit kutularının ortasından kesilir.
+    /// <paramref name="ink"/> verilirse yukarı dolgu üstteki mürekkebe (soru kökünün son satırı) taşmaz (<see cref="FitTops"/>).
     /// </summary>
-    public static LayoutQuestion Prepare(LayoutQuestion question, int pageWidth, int pageHeight)
+    public static LayoutQuestion Prepare(LayoutQuestion question, int pageWidth, int pageHeight, RowInk? ink = null)
     {
         var pad = (int)(25 * pageWidth / BaseWidth);
         var q = question.Box;
@@ -146,7 +147,45 @@ public static class BookQuestionLayout
             ? raw.Zip(letters).OrderBy(p => p.Second, StringComparer.Ordinal).Select(p => p.First).ToList()
             : raw.OrderBy(o => (int)(o.Y / row)).ThenBy(o => o.X).ToList();
         var options = TrimOverlaps(ordered, AlignChoices(ordered.Select(o => Padded(o, q, pad)).ToList(), pageWidth));
+        if (ink is not null)
+            options = FitTops(ordered, options, ink);
         return new LayoutQuestion(q, options);
+    }
+
+    /// <summary>
+    /// Şıklar kökün hemen altında başlayınca yukarı dolgu kökün son satırını şıkka katar. Her şıkta tespit tepesinden yukarı
+    /// bakılır: şıkkın kendi mürekkebi (tespit tepeyi biraz kesmişse) geçilir, sonraki boşluğun üstünde yine mürekkep varsa
+    /// tepe o boşluğun ortasına iner. Aynı tepeye hizalı satır birlikte iner; hiçbir şık tespit kutusunun tepesinden aşağı inmez.
+    /// </summary>
+    public static List<LayoutBox> FitTops(IReadOnlyList<LayoutBox> raw, IReadOnlyList<LayoutBox> boxes, RowInk ink)
+    {
+        var output = boxes.ToArray();
+        var tops = output.Select((box, i) => FitTop(raw[i], box.Y, ink)).ToArray();
+        foreach (var row in Enumerable.Range(0, output.Length).GroupBy(i => output[i].Y).ToList())
+        {
+            var top = Math.Min(row.Max(i => tops[i]), row.Min(i => raw[i].Y));
+            foreach (var i in row)
+            {
+                if (top > output[i].Y)
+                    output[i] = output[i] with { Y = top, Height = output[i].Bottom - top };
+            }
+        }
+        return output.ToList();
+    }
+
+    /// <summary>Sayfa görselinin mürekkep okuyucusu; görsel çözülemez ya da kutuların boyutunda değilse null (kural atlanır).</summary>
+    public static RowInk? InkOf(string? imageBase64, int pageWidth, int pageHeight) =>
+        PageInk.FromBase64(imageBase64) is { } ink && ink.Width == pageWidth && ink.Height == pageHeight ? ink.RowHasInk : null;
+
+    private static int FitTop(LayoutBox raw, int top, RowInk ink)
+    {
+        var y = raw.Y - 1;
+        while (y >= top && ink(y, raw.X, raw.Right))
+            y--;
+        var blankBottom = y;
+        while (y >= top && !ink(y, raw.X, raw.Right))
+            y--;
+        return y < top ? top : FloorHalf(y + 1 + blankBottom + 1);
     }
 
     /// <summary>
@@ -154,7 +193,7 @@ public static class BookQuestionLayout
     /// şıkları <see cref="Prepare"/> sırasıyla dizilir, paylanır ve soru şıkları kapsayacak kadar büyür (ham kutularla kaydedilen
     /// soru şık satırını keserdi). Girdi değişmez (önbellekteki kayıt); diğer bloklar aynen kalır.
     /// </summary>
-    public static PredictionListDto PrepareForCanvas(PredictionListDto predictions, int pageWidth, int pageHeight)
+    public static PredictionListDto PrepareForCanvas(PredictionListDto predictions, int pageWidth, int pageHeight, RowInk? ink = null)
     {
         var copy = JsonSerializer.Deserialize<PredictionListDto>(JsonSerializer.Serialize(predictions)) ?? new PredictionListDto();
         var row = 60 * pageWidth / BaseWidth;
@@ -168,7 +207,7 @@ public static class BookQuestionLayout
                 ? subs.Zip(letters).OrderBy(x => x.Second, StringComparer.Ordinal).Select(x => x.First).ToList()
                 : subs.OrderBy(o => (int)(o.Y / row)).ThenBy(o => o.X).ToList();
             var prepared = Prepare(new LayoutQuestion(BoxOf(p), ordered.Select(BoxOf).ToList(),
-                ordered.Select(o => OptionLetters.Normalize(o.Label)).ToList()), pageWidth, pageHeight);
+                ordered.Select(o => OptionLetters.Normalize(o.Label)).ToList()), pageWidth, pageHeight, ink);
             SetBox(p, prepared.Box);
             for (var i = 0; i < ordered.Count; i++)
                 SetBox(ordered[i], prepared.Options[i]);

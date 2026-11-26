@@ -114,7 +114,8 @@ public sealed class LabelingService(
         {
             Result = response.Result with
             {
-                Predictions = BookImport.BookQuestionLayout.PrepareForCanvas(response.Result.Predictions, header.Width, header.Height)
+                Predictions = BookImport.BookQuestionLayout.PrepareForCanvas(response.Result.Predictions, header.Width, header.Height,
+                    BookImport.BookQuestionLayout.InkOf(request.ImageBase64, header.Width, header.Height))
             }
         };
     }

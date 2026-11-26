@@ -160,6 +160,11 @@ aktarım aracındaki Python portu referanstır (#1022).
   (`GET /transcribe/status` → `available: false`, 1 dk önbellek) "QR'dan al" görünmez; kurulumun geri kalanı değişmez. Model
   `WHISPER_MODEL` (varsayılan `large-v3-turbo`, ~1,6 GB; `small` şık harflerinde zayıf), ilk kullanımda iner, prod'da
   `whisper_cache` volume'unda kalır. Sesler sırayla çevrilir (CPU'da soru başına ~13 sn). Claude kullanılmaz, iş bütçesine yazılmaz.
+  **Bellek (2026-11-26):** Whisper ~900 MB tutar; `WHISPER_IDLE_SECONDS` (varsayılan 600, 0 = hiç bırakma) boyunca istek
+  gelmezse bırakılır, sonraki istek yeniden yükler (~35 sn; bir kitabın sesleri art arda geldiği için iş ortasında olmaz).
+  YOLO / torch yalnız `/predict` ile yüklenir; temizlik ve ses uçlarından sonra `memory.trim()` (gc + `malloc_trim`) ve imajda
+  `MALLOC_ARENA_MAX=2`. Ölçüm (32 sayfa analiz + 20 sayfa temizlik): iş sonrası 1183 MB → 113 MB, açılış 373 → 115 MB;
+  demoda Whisper yüklü ve günlerce açık süreç 3,2 GB'tı.
 - **Anahtarın kaynağı (#1219):** `BookImportJobTests.KeySource` — `Book` (kurulumun anahtar okuması), `Qr`, `Ai` ("AI ile bul"),
   `Manual` ("Anahtar gir"). Onay isteği satır başına kaynağı taşır; taşımazsa anahtar kurulumdakiyle aynıysa onun kaynağı kalır,
   değiştiyse `Manual`. Onay ekranı `Qr` / `Ai` kaynağını etiketle gösterir. Bu alandan önceki işlerde null (kitaptan sayılır).

@@ -3,13 +3,13 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 from typing import List
 from pathlib import Path
-from ultralytics import YOLO
 from PIL import Image, UnidentifiedImageError
 import base64
 import json
 from io import BytesIO
 import os
 import logging
+import threading
 from pyzbar.pyzbar import decode
 from guards import (
     BodySizeLimitMiddleware,
@@ -28,6 +28,7 @@ from dataset_store import (
     open_oriented_rgb,
     save_page,
 )
+import memory
 import transcribe
 import page_clean
 
@@ -97,9 +98,20 @@ MODELS_DIR = Path(os.getenv("MODELS_DIR", "models"))
 QUESTION_MODEL_PATH = os.getenv("QUESTION_MODEL_PATH") or str(MODELS_DIR / "question-best.pt")
 ANSWER_MODEL_PATH = os.getenv("ANSWER_MODEL_PATH") or str(MODELS_DIR / "answer-best.pt")
 
-model = YOLO(QUESTION_MODEL_PATH)
-sub_model = YOLO(ANSWER_MODEL_PATH)
-logger.info(f"Models loaded: question={QUESTION_MODEL_PATH} answer={ANSWER_MODEL_PATH}")
+# Bellek: torch + iki model ~300 MB; yalnız /predict (işaretleme ekranındaki YOLO tespiti) ister. İlk istekte yüklenir; temizlik
+# ve ses uçlarını kullanan süreç torch'u hiç yüklemez.
+_yolo_lock = threading.Lock()
+_yolo = None
+
+
+def yolo_models():
+    global _yolo
+    with _yolo_lock:
+        if _yolo is None:
+            from ultralytics import YOLO
+            _yolo = (YOLO(QUESTION_MODEL_PATH), YOLO(ANSWER_MODEL_PATH))
+            logger.info(f"Models loaded: question={QUESTION_MODEL_PATH} answer={ANSWER_MODEL_PATH}")
+        return _yolo
 
 
 def validate_upload_limits(payload: UploadQuestionsRequest) -> None:
@@ -117,6 +129,7 @@ def predict(data: ImageData):
         image_bytes = decode_base64_image(data.image_base64)
         image = open_oriented_rgb(image_bytes)
         logger.info(f"Received image with shape: {image.size}")
+        model, sub_model = yolo_models()
         # Predict et
         results = model.predict(
             source=image,
@@ -185,6 +198,8 @@ def predict(data: ImageData):
     except Exception:
         logger.exception("predict failed")
         return {"success": False, "error": "Prediction failed"}
+    finally:
+        memory.trim()
 
 
 @app.post("/send-to-fix")
@@ -328,6 +343,9 @@ async def clean_analyze(request: CleanAnalyzeRequest):
     except Exception:
         logger.exception("clean analyze failed")
         raise HTTPException(status_code=500, detail="page analysis failed")
+    finally:
+        pages = None
+        memory.trim()
 
 
 @app.post("/clean/page")
@@ -345,6 +363,8 @@ async def clean_page(request: Request, token: str):
     except Exception:
         logger.exception("clean page failed")
         raise HTTPException(status_code=500, detail="page cleaning failed")
+    finally:
+        memory.trim()
     return Response(content=image, media_type="image/webp", headers={
         "X-Page-Marks": json.dumps(marks, separators=(",", ":")),
         "X-Watermark-Removed": "true" if watermark else "false",
